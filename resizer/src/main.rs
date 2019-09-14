@@ -12,8 +12,8 @@ use inotify::{
 use image::{GenericImageView, FilterType, DynamicImage};
 
 const MAX_WIDTH: u32 = 800;
-const IN_DIR: &str = "/home/malcolm/Downloads/test_dir/";
-const OUT_DIR: &str = "/home/malcolm/Downloads/test_out/";
+const IN_DIR: &str = "/home/malcolm/Downloads/cats2/fullsized/";
+const OUT_DIR: &str = "/home/malcolm/Downloads/cats2/resized/";
 
 fn main() {
 
@@ -28,7 +28,7 @@ fn main() {
     inotify
         .add_watch(
             path,
-            WatchMask::MODIFY | WatchMask::CREATE | WatchMask::DELETE,
+            WatchMask::CREATE
         )
         .expect("Failed to add inotify watch");
 
@@ -54,25 +54,32 @@ fn main() {
                         temp_in_path.push_str(&new_file_path);
                         let in_path = Path::new(&temp_in_path);
 
+                        let f_name = in_path.file_name().unwrap();
                         let mut temp_out_path = OUT_DIR.to_string();
                         temp_out_path.push_str(f_name.to_str().unwrap());
                         let out_path = Path::new(&temp_out_path);
 
-                        let f_name = in_path.file_name().unwrap();
-
                         println!("Trying to open path: {:?}", &in_path);
-                        let img = image::open(&in_path).unwrap();
-                        let (width, height) = img.dimensions();
-                        let new_h = height as f32 * (MAX_WIDTH as f32 / width as f32);
-                        let mut to_save: DynamicImage;
-                        if width > MAX_WIDTH {
-                            println!("Resizing image...");
-                            to_save = img.resize(MAX_WIDTH, new_h as u32, FilterType::Lanczos3);
-                        } else {
-                            to_save = img;
+
+                        let img_res = image::open(&in_path);
+                        match img_res {
+                            Ok(img) => {
+                                let (width, height) = img.dimensions();
+                                let new_h = height as f32 * (MAX_WIDTH as f32 / width as f32);
+                                let mut to_save: DynamicImage;
+                                if width > MAX_WIDTH {
+                                    println!("Resizing image...");
+                                    to_save = img.resize(MAX_WIDTH, new_h as u32, FilterType::Lanczos3);
+                                } else {
+                                    to_save = img;
+                                }
+                                println!("Saving resized image to {:?}", &out_path);
+                                to_save.save(out_path);
+                            },
+                            Err(e) => {
+                                println!("{:?}", e);
+                            }
                         }
-                        println!("Saving resized image to {:?}", &out_path);
-                        to_save.save(out_path);
                     });
                 }
             }
